@@ -1,0 +1,21 @@
+# Vault-specific config — never commit
+.claude/vault.json
+
+# macOS
+.DS_Store
+
+# Temp files
+*.swp
+*.bak
+*~
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Test outputs
+_test_vault/

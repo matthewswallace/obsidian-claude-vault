@@ -1,0 +1,40 @@
+{
+  "_comment": "Copy to .claude/vault.json and fill in your vault's specifics. vault.json is gitignored.",
+  "vault_name": "My Vault",
+  "user_email": "you@example.com",
+  "isolation": {
+    "_comment": "Strict isolation — folder + keyword patterns that must NEVER cross-contaminate other folders. Leave empty {} if not needed.",
+    "name": "",
+    "folder": "",
+    "patterns": [],
+    "overlap_with": {
+      "_comment": "Optional: a client or related entity where the isolated entity can be mentioned (e.g. employer-as-client at agency).",
+      "name": "",
+      "folder": "",
+      "context_patterns": []
+    }
+  },
+  "folders": {
+    "daily": "Daily",
+    "archive": "_archive",
+    "meta": "_meta",
+    "inbox": "_inbox",
+    "attachments": "Attachments",
+    "weekly_reviews": "Reviews",
+    "captures": "Inbox"
+  },
+  "project_keywords": {
+    "_comment": "Map of project name → list of regex patterns. Used for routing captures, classifying chatgpt imports, and the prompt router hook.",
+    "recipes": ["recipe", "ingredient"],
+    "music": ["song", "setlist", "lyrics"],
+    "travel": ["flight", "itinerary", "trip"],
+    "finances": ["budget", "tax", "invoice"],
+    "career": ["resume", "interview prep"],
+    "code": ["python", "javascript", "react"]
+  },
+  "scheduled_routines": {
+    "_comment": "If you use the Anthropic remote routines for morning brief / weekly review, configure here. Email goes to user_email.",
+    "morning_brief_enabled": false,
+    "weekly_review_enabled": false
+  }
+}
