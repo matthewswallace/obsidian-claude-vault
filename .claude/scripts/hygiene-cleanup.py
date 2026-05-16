@@ -25,8 +25,17 @@ import yaml
 
 VAULT = Path(__file__).resolve().parents[2]
 LOG = VAULT / "_meta" / "hygiene.log"
+VAULT_CONFIG = VAULT / ".claude" / "vault.json"
 
 SKIP_DIR_NAMES = {".obsidian", ".claude", ".git", "_archive", "Attachments", "_meta", "node_modules"}
+
+
+def _load_explicit_flattens() -> list[str]:
+    try:
+        cfg = json.loads(VAULT_CONFIG.read_text(encoding="utf-8"))
+        return cfg.get("hygiene", {}).get("explicit_flattens", []) or []
+    except (OSError, ValueError):
+        return []
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 
@@ -56,18 +65,13 @@ def find_parent_named_indexes(root: Path) -> list[Path]:
     return out
 
 
-EXPLICIT_FLATTENS = [
-    "Banyan Labs/operations/todo/Operations",
-]
-
-
 def find_doubled_folders(root: Path) -> list[Path]:
-    """Return inner doubled folder (e.g. .../Leads/Leads/) + explicit flattens."""
+    """Return inner doubled folder (e.g. .../Leads/Leads/) + explicit flattens from vault.json."""
     out = []
     for d in iter_dirs(root):
         if d.parent.name == d.name and d.parent != d:
             out.append(d)
-    for rel in EXPLICIT_FLATTENS:
+    for rel in _load_explicit_flattens():
         p = root / rel
         if p.is_dir():
             out.append(p)
