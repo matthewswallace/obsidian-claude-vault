@@ -57,8 +57,7 @@ def find_parent_named_indexes(root: Path) -> list[Path]:
 
 
 EXPLICIT_FLATTENS = [
-    # Per-vault: collapse non-exact-doubled nests (parent.name != child.name).
-    # Example: "Work/operations/todo/Operations"
+    "Banyan Labs/operations/todo/Operations",
 ]
 
 
