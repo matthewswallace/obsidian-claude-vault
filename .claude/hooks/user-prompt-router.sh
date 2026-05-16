@@ -61,6 +61,12 @@ if echo "$PROMPT" | grep -qE "move|rename|reorganiz|new folder|create.*folder|fi
   SUGGESTIONS+=("filename hygiene: strip UUIDs/hashes/emoji, drop redundant prefixes, ≤60 chars.")
 fi
 
+# Engineering-practices guard — fires on code/git/scaffold work
+# Triggers when user mentions git, commits, tests, code structure, or .claude/ scaffold work.
+if echo "$PROMPT" | grep -qE "\bgit\b|commit|push|pull request|\bpr\b|branch|merge|rebase|gitflow|test\b|tdd|refactor|clean code|clean arch|\.claude/|hook|script|skill|command|build (a|the|new)|create (a|the|new).*(skill|hook|script|command)"; then
+  SUGGESTIONS+=("⚙ ENGINEERING.md applies — read .claude/ENGINEERING.md before touching scaffold. Key: public-repo discipline (no user paths/names), trunk-based git, TDD for non-trivial scripts, conventional commits.")
+fi
+
 if [ ${#SUGGESTIONS[@]} -gt 0 ]; then
   echo "<vault-router>"
   echo "Skill/guard suggestions for this prompt:"
