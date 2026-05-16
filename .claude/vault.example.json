@@ -32,6 +32,10 @@
     "career": ["resume", "interview prep"],
     "code": ["python", "javascript", "react"]
   },
+  "hygiene": {
+    "_comment": "Per-vault folder collapse for nested folders whose parent.name != child.name but which still need flattening. Exact-name doubled folders (Foo/Foo) are auto-detected and don't need to be listed.",
+    "explicit_flattens": []
+  },
   "scheduled_routines": {
     "_comment": "If you use the Anthropic remote routines for morning brief / weekly review, configure here. Email goes to user_email.",
     "morning_brief_enabled": false,
