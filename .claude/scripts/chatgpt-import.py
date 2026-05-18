@@ -189,9 +189,27 @@ def import_conversations(zip_path: Path, apply: bool):
         sys.exit(2)
 
     print(f"Reading {zip_path.relative_to(VAULT) if zip_path.is_relative_to(VAULT) else zip_path}...")
+    convs = []
     with zipfile.ZipFile(zip_path) as z:
-        with z.open("conversations.json") as f:
-            convs = json.load(f)
+        filenames = z.namelist()
+        # Support both old format (conversations.json) and new format (conversations-*.json)
+        conv_files = sorted([f for f in filenames if f.startswith("conversations-") and f.endswith(".json")])
+        if not conv_files:
+            # Try old format
+            if "conversations.json" in filenames:
+                conv_files = ["conversations.json"]
+            else:
+                print(f"ERROR: No conversations.json or conversations-*.json found in zip", file=sys.stderr)
+                sys.exit(2)
+
+        for conv_file in conv_files:
+            print(f"  Reading {conv_file}...")
+            with z.open(conv_file) as f:
+                batch = json.load(f)
+                if isinstance(batch, list):
+                    convs.extend(batch)
+                else:
+                    convs.append(batch)
     print(f"Loaded {len(convs)} conversations from export.")
 
     if apply:
