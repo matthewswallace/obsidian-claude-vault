@@ -27,7 +27,10 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    yaml = None
 
 VAULT = Path(__file__).resolve().parents[2]
 LOG = VAULT / "_meta" / "enrich.log"
@@ -35,6 +38,55 @@ SC_QUERY = VAULT / ".claude/scripts/sc-query.py"
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 WIKILINK_RE = re.compile(r"\[\[([^\]\|]+)(?:\|[^\]]*)?\]\]")
+
+
+def parse_frontmatter(raw: str) -> dict:
+    if yaml:
+        try:
+            fm = yaml.safe_load(raw) or {}
+            return fm if isinstance(fm, dict) else {}
+        except yaml.YAMLError:
+            return {}
+
+    fm = {}
+    current_key = None
+    for line in raw.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line.startswith("  - ") and current_key:
+            fm.setdefault(current_key, []).append(line[4:].strip().strip('"'))
+            continue
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        current_key = key
+        if not value:
+            fm[key] = []
+        elif value.startswith("[") and value.endswith("]"):
+            items = [v.strip().strip('"').strip("'") for v in value[1:-1].split(",")]
+            fm[key] = [v for v in items if v]
+        else:
+            fm[key] = value.strip('"').strip("'")
+    return fm
+
+
+def dump_frontmatter(fm: dict) -> str:
+    if yaml:
+        return yaml.safe_dump(fm, sort_keys=False, allow_unicode=True, default_flow_style=False).rstrip()
+
+    lines = []
+    for key, value in fm.items():
+        if isinstance(value, list):
+            lines.append(f"{key}:")
+            for item in value:
+                lines.append(f"  - {item}")
+        elif value is None:
+            lines.append(f"{key}:")
+        else:
+            lines.append(f"{key}: {value}")
+    return "\n".join(lines)
 
 
 def log(entry: dict) -> None:
@@ -47,19 +99,13 @@ def read_fm(text: str) -> tuple[dict, str]:
     m = FRONTMATTER_RE.match(text)
     if not m:
         return {}, text
-    try:
-        fm = yaml.safe_load(m.group(1)) or {}
-        if not isinstance(fm, dict):
-            fm = {}
-    except yaml.YAMLError:
-        fm = {}
-    return fm, text[m.end():]
+    return parse_frontmatter(m.group(1)), text[m.end():]
 
 
 def write_fm(fm: dict, body: str) -> str:
     if not fm:
         return body
-    dumped = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True, default_flow_style=False).rstrip()
+    dumped = dump_frontmatter(fm)
     return f"---\n{dumped}\n---\n{body}"
 
 

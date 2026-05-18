@@ -20,13 +20,48 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:
+    yaml = None
 
 VAULT = Path(__file__).resolve().parents[2]
 SKIP_PARTS = {".obsidian", ".claude", ".git", "_archive", "Attachments", "_meta", ".smart-env", "node_modules", ".trash"}
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
 WIKILINK_RE = re.compile(r"\[\[([^\]\|#]+?)(?:[#\|][^\]]*)?\]\]")
+
+
+def parse_frontmatter(raw: str) -> dict:
+    if yaml:
+        try:
+            meta = yaml.safe_load(raw) or {}
+            return meta if isinstance(meta, dict) else {}
+        except yaml.YAMLError:
+            return {}
+
+    meta = {}
+    current_key = None
+    for line in raw.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line.startswith("  - ") and current_key:
+            meta.setdefault(current_key, []).append(line[4:].strip().strip('"'))
+            continue
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        current_key = key
+        if not value:
+            meta[key] = []
+        elif value.startswith("[") and value.endswith("]"):
+            items = [v.strip().strip('"').strip("'") for v in value[1:-1].split(",")]
+            meta[key] = [v for v in items if v]
+        else:
+            meta[key] = value.strip('"').strip("'")
+    return meta
 
 
 def is_in_scope(p: Path) -> bool:
@@ -41,13 +76,7 @@ def read_note(p: Path) -> tuple[dict, str]:
     m = FRONTMATTER_RE.match(text)
     if not m:
         return {}, text
-    try:
-        meta = yaml.safe_load(m.group(1)) or {}
-        if not isinstance(meta, dict):
-            meta = {}
-    except yaml.YAMLError:
-        meta = {}
-    return meta, text[m.end():]
+    return parse_frontmatter(m.group(1)), text[m.end():]
 
 
 def is_needs_triage(meta: dict) -> bool:

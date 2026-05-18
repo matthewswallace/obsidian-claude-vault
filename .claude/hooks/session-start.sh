@@ -8,8 +8,38 @@ VAULT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$VAULT_ROOT"
 
 TODAY=$(date +%Y-%m-%d)
-DAILY="Daily/$TODAY.md"
+CONFIG="$VAULT_ROOT/.claude/vault.json"
 INDEX="_meta/vault-index.md"
+
+cfg() {
+  python3 - "$CONFIG" "$1" "$2" <<'PY' 2>/dev/null
+import json
+import sys
+from pathlib import Path
+
+path, dotted, default = sys.argv[1:4]
+try:
+    data = json.loads(Path(path).read_text())
+except Exception:
+    print(default)
+    raise SystemExit
+
+value = data
+for part in dotted.split("."):
+    value = value.get(part, {}) if isinstance(value, dict) else {}
+if value in ({}, None, ""):
+    value = default
+print(value)
+PY
+}
+
+DAILY_DIR="$(cfg folders.daily Daily)"
+ARCHIVE_DIR="$(cfg folders.archive _archive)"
+META_DIR="$(cfg folders.meta _meta)"
+INBOX_DIR="$(cfg folders.inbox _inbox)"
+ATTACHMENTS_DIR="$(cfg folders.attachments Attachments)"
+ISOLATION_DIR="$(cfg isolation.folder __none__)"
+DAILY="$DAILY_DIR/$TODAY.md"
 
 # Refresh vault index in background (don't block session start)
 ( bash "$VAULT_ROOT/.claude/scripts/build-vault-index.sh" >/dev/null 2>&1 & )
@@ -29,7 +59,7 @@ if [ -f "$DAILY" ]; then
 else
   echo "## Today's daily note"
   echo ""
-  echo "_No daily note yet for $TODAY. Create with: \`Daily/$TODAY.md\`_"
+  echo "_No daily note yet for $TODAY. Create with: \`$DAILY\`_"
   echo ""
 fi
 
@@ -37,9 +67,17 @@ fi
 echo "## Top-level project folders"
 echo ""
 for d in */; do
-  case "$d" in
-    "Notion/"|"_meta/"|".obsidian/"|".claude/"|".trash/"|"Daily/"|"_Inbox/") continue ;;
-  esac
+  name="${d%/}"
+  [ "$name" = ".obsidian" ] && continue
+  [ "$name" = ".claude" ] && continue
+  [ "$name" = ".smart-env" ] && continue
+  [ "$name" = ".trash" ] && continue
+  [ "$name" = "$META_DIR" ] && continue
+  [ "$name" = "$ARCHIVE_DIR" ] && continue
+  [ "$name" = "$DAILY_DIR" ] && continue
+  [ "$name" = "$INBOX_DIR" ] && continue
+  [ "$name" = "$ATTACHMENTS_DIR" ] && continue
+  [ "$name" = "$ISOLATION_DIR" ] && continue
   count=$(find "$d" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
   echo "- \`$d\` ($count notes)"
 done
@@ -49,8 +87,10 @@ echo ""
 echo "## Recently modified (last 7 days, top 10)"
 echo ""
 find . -name "*.md" -type f -mtime -7 \
-  -not -path "./Notion/*" -not -path "./.obsidian/*" \
-  -not -path "./.claude/*" -not -path "./_meta/*" \
+  -not -path "./.obsidian/*" -not -path "./.claude/*" \
+  -not -path "./.smart-env/*" -not -path "./$META_DIR/*" \
+  -not -path "./$ARCHIVE_DIR/*" -not -path "./$ATTACHMENTS_DIR/*" \
+  -not -path "./$ISOLATION_DIR/*" \
   2>/dev/null | \
   xargs -I{} stat -f "%m %N" "{}" 2>/dev/null | \
   sort -rn | head -10 | \
